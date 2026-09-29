@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Anomaly Detection Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: #f5f7fa;
+        padding: 20px;
+      }
+
+      .header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+        text-align: center;
+      }
+
+      .header h1 {
+        font-size: 32px;
+        margin-bottom: 10px;
+      }
+
+      .header p {
+        font-size: 16px;
+        opacity: 0.9;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      .nav-links {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+
+      .nav-links a {
+        background: white;
+        color: #667eea;
+        padding: 12px 30px;
+        margin: 0 10px;
+        border-radius: 5px;
+        text-decoration: none;
+        font-weight: 600;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s;
+      }
+
+      .nav-links a:hover {
+        transform: translateY(-2px);
+      }
+
+      .nav-links a.active {
+        background: #667eea;
+        color: white;
+      }
+
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+      }
+
+      .stat-card {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        text-align: center;
+      }
+
+      .stat-label {
+        color: #666;
+        font-size: 14px;
+        margin-bottom: 10px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+
+      .stat-value {
+        font-size: 32px;
+        font-weight: 700;
+        color: #333;
+        margin-bottom: 5px;
+      }
+
+      .stat-subtext {
+        color: #999;
+        font-size: 12px;
+      }
+
+      .stat-card.normal {
+        border-left: 5px solid #28a745;
+      }
+
+      .stat-card.anomaly {
+        border-left: 5px solid #dc3545;
+      }
+
+      .stat-card.total {
+        border-left: 5px solid #667eea;
+      }
+
+      .charts-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+      }
+
+      .chart-container {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+
+      .chart-container h2 {
+        color: #333;
+        margin-bottom: 20px;
+        font-size: 18px;
+      }
+
+      .chart-wrapper {
+        position: relative;
+        height: 300px;
+      }
+
+      .info-section {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        margin-top: 30px;
+      }
+
+      .info-section h2 {
+        color: #333;
+        margin-bottom: 20px;
+        font-size: 20px;
+      }
+
+      .info-box {
+        background: #f9f9f9;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 15px;
+        border-left: 4px solid #667eea;
+      }
+
+      .info-box h3 {
+        color: #333;
+        font-size: 14px;
+        margin-bottom: 5px;
+      }
+
+      .info-box p {
+        color: #666;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+
+      .refresh-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 12px 30px;
+        border: none;
+        border-radius: 5px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-bottom: 20px;
+        transition: transform 0.2s;
+      }
+
+      .refresh-btn:hover {
+        transform: translateY(-2px);
+      }
+
+      .stats-summary {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 15px;
+        margin-top: 20px;
+      }
+
+      .summary-item {
+        background: #f9f9f9;
+        padding: 15px;
+        border-radius: 5px;
+        text-align: center;
+      }
+
+      .summary-label {
+        color: #666;
+        font-size: 12px;
+        text-transform: uppercase;
+      }
+
+      .summary-value {
+        color: #333;
+        font-size: 20px;
+        font-weight: 700;
+        margin-top: 5px;
+      }
+
+      @media (max-width: 768px) {
+        .charts-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .header h1 {
+          font-size: 24px;
+        }
+
+        .stat-value {
+          font-size: 24px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>📊 Anomaly Detection Dashboard</h1>
+        <p>Real-time transaction monitoring and analysis</p>
+      </div>
+
+      <div class="nav-links">
+        <a href="index.html">🔍 Check Transaction</a>
+        <a href="dashboard.html" class="active">📊 Dashboard</a>
+      </div>
+
+      <button class="refresh-btn" onclick="refreshDashboard()">
+        🔄 Refresh Data
+      </button>
+
+      <!-- Stats Cards -->
+      <div class="stats-grid">
+        <div class="stat-card total">
+          <div class="stat-label">Total Transactions Checked</div>
+          <div class="stat-value" id="totalTransactions">0</div>
+          <div class="stat-subtext">in this session</div>
+        </div>
+
+        <div class="stat-card normal">
+          <div class="stat-label">Normal Transactions</div>
+          <div class="stat-value" id="normalCount">0</div>
+          <div class="stat-subtext">
+            <span id="normalPercent">0</span>% of total
+          </div>
+        </div>
+
+        <div class="stat-card anomaly">
+          <div class="stat-label">Anomalous Transactions</div>
+          <div class="stat-value" id="anomalyCount">0</div>
+          <div class="stat-subtext">
+            <span id="anomalyPercent">0</span>% of total
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts Section -->
+      <div class="charts-grid">
+        <!-- Pie Chart -->
+        <div class="chart-container">
+          <h2>Transaction Distribution</h2>
+          <div class="chart-wrapper">
+            <canvas id="pieChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Bar Chart -->
+        <div class="chart-container">
+          <h2>Detection Summary</h2>
+          <div class="chart-wrapper">
+            <canvas id="barChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Model Information -->
+      <div class="info-section">
+        <h2>📈 Model Performance</h2>
+        <div class="stats-summary">
+          <div class="summary-item">
+            <div class="summary-label">Model Type</div>
+            <div class="summary-value">Isolation Forest</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-label">Training Data</div>
+            <div class="summary-value">5,000 Normal</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-label">Detection Rate</div>
+            <div class="summary-value">High Accuracy</div>
+          </div>
+        </div>
+
+        <div class="info-box" style="margin-top: 20px">
+          <h3>🎯 How it Works</h3>
+          <p>
+            The ML model analyzes 6 transaction features (amount, hour, login
+            attempts, response time, transaction frequency, and location
+            changes) to identify suspicious patterns. It learns from normal
+            transaction behavior to detect anomalies.
+          </p>
+        </div>
+
+        <div class="info-box">
+          <h3>📊 Feature Analysis</h3>
+          <p>
+            <strong>Amount:</strong> Transaction value in ₹ |
+            <strong>Hour:</strong> Time of transaction (0-23) |
+            <strong>Login Attempts:</strong> Number of login tries |
+            <strong>Response Time:</strong> Server response in ms |
+            <strong>Frequency:</strong> Daily transaction count |
+            <strong>Location:</strong> Whether location changed
+          </p>
+        </div>
+
+        <div class="info-box">
+          <h3>✅ What's Normal?</h3>
+          <p>
+            Normal transactions typically: Small to medium amounts (₹100-₹50K),
+            daytime hours (6am-11pm), 1-2 login attempts, fast response times
+            (100-500ms), moderate frequency, same location
+          </p>
+        </div>
+
+        <div class="info-box">
+          <h3>⚠️ What's Anomalous?</h3>
+          <p>
+            Anomalous transactions typically: Large amounts (₹50K+), late
+            night/early morning (0am-5am), many login attempts (5+), slow
+            response (800ms+), high frequency, location changes
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Initialize data from localStorage
+      let transactionData = JSON.parse(
+        localStorage.getItem("transactionData"),
+      ) || {
+        normal: 0,
+        anomaly: 0,
+      };
+
+      // Charts
+      let pieChart, barChart;
+
+      function initCharts() {
+        // Pie Chart
+        const pieCtx = document.getElementById("pieChart").getContext("2d");
+        pieChart = new Chart(pieCtx, {
+          type: "doughnut",
+          data: {
+            labels: ["Normal Transactions", "Anomalous Transactions"],
+            datasets: [
+              {
+                data: [transactionData.normal, transactionData.anomaly],
+                backgroundColor: ["#28a745", "#dc3545"],
+                borderColor: ["#28a745", "#dc3545"],
+                borderWidth: 2,
+                hoverOffset: 10,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: "bottom",
+                labels: {
+                  padding: 20,
+                  font: { size: 14 },
+                },
+              },
+            },
+          },
+        });
+
+        // Bar Chart
+        const barCtx = document.getElementById("barChart").getContext("2d");
+        barChart = new Chart(barCtx, {
+          type: "bar",
+          data: {
+            labels: ["Normal", "Anomaly"],
+            datasets: [
+              {
+                label: "Count",
+                data: [transactionData.normal, transactionData.anomaly],
+                backgroundColor: ["#28a745", "#dc3545"],
+                borderColor: ["#28a745", "#dc3545"],
+                borderWidth: 2,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: "x",
+            plugins: {
+              legend: {
+                display: true,
+                labels: {
+                  font: { size: 14 },
+                },
+              },
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  stepSize: 1,
+                },
+              },
+            },
+          },
+        });
+      }
+
+      function updateStats() {
+        const total = transactionData.normal + transactionData.anomaly;
+        const normalPercent =
+          total > 0 ? ((transactionData.normal / total) * 100).toFixed(1) : 0;
+        const anomalyPercent =
+          total > 0 ? ((transactionData.anomaly / total) * 100).toFixed(1) : 0;
+
+        document.getElementById("totalTransactions").textContent = total;
+        document.getElementById("normalCount").textContent =
+          transactionData.normal;
+        document.getElementById("anomalyCount").textContent =
+          transactionData.anomaly;
+        document.getElementById("normalPercent").textContent = normalPercent;
+        document.getElementById("anomalyPercent").textContent = anomalyPercent;
+
+        // Update charts
+        pieChart.data.datasets[0].data = [
+          transactionData.normal,
+          transactionData.anomaly,
+        ];
+        pieChart.update();
+
+        barChart.data.datasets[0].data = [
+          transactionData.normal,
+          transactionData.anomaly,
+        ];
+        barChart.update();
+      }
+
+      function refreshDashboard() {
+        updateStats();
+        alert("Dashboard refreshed!");
+      }
+
+      // Listen for updates from index.html
+      window.addEventListener("storage", (e) => {
+        if (e.key === "transactionData") {
+          transactionData = JSON.parse(e.newValue);
+          updateStats();
+        }
+      });
+
+      // Initialize on page load
+      window.addEventListener("load", () => {
+        initCharts();
+        updateStats();
+      });
+    </script>
+  </body>
+</html>

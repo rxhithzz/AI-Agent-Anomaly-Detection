@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Anomaly Detection</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+      }
+
+      .container {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        padding: 40px;
+        max-width: 600px;
+        width: 100%;
+      }
+
+      h1 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 10px;
+        font-size: 28px;
+      }
+
+      .subtitle {
+        text-align: center;
+        color: #666;
+        margin-bottom: 30px;
+        font-size: 14px;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 8px;
+        color: #333;
+        font-weight: 600;
+      }
+
+      input {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #e0e0e0;
+        border-radius: 5px;
+        font-size: 14px;
+        transition: border-color 0.3s;
+      }
+
+      input:focus {
+        outline: none;
+        border-color: #667eea;
+      }
+
+      .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+
+      button {
+        width: 100%;
+        padding: 15px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 5px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s;
+        margin-top: 10px;
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+      }
+
+      button:active {
+        transform: translateY(0);
+      }
+
+      .result {
+        margin-top: 30px;
+        padding: 20px;
+        border-radius: 5px;
+        display: none;
+      }
+
+      .result.show {
+        display: block;
+      }
+
+      .result-normal {
+        background: #d4edda;
+        border: 2px solid #28a745;
+        color: #155724;
+      }
+
+      .result-anomaly {
+        background: #f8d7da;
+        border: 2px solid #dc3545;
+        color: #721c24;
+      }
+
+      .result h2 {
+        margin-bottom: 10px;
+        font-size: 24px;
+      }
+
+      .result p {
+        margin: 5px 0;
+        font-size: 14px;
+      }
+
+      .loading {
+        text-align: center;
+        color: #667eea;
+        font-weight: 600;
+        display: none;
+      }
+
+      .error {
+        background: #f8d7da;
+        border: 2px solid #dc3545;
+        color: #721c24;
+        padding: 15px;
+        border-radius: 5px;
+        margin-top: 20px;
+        display: none;
+      }
+
+      .error.show {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🔍 Anomaly Detector</h1>
+      <p class="subtitle">Check if a transaction is normal or suspicious</p>
+
+      <form id="transactionForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="amount">Amount (₹)</label>
+            <input
+              type="number"
+              id="amount"
+              placeholder="e.g., 5000"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="hour">Hour (0-23)</label>
+            <input
+              type="number"
+              id="hour"
+              placeholder="e.g., 14"
+              min="0"
+              max="23"
+              required
+            />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="loginAttempts">Login Attempts</label>
+            <input
+              type="number"
+              id="loginAttempts"
+              placeholder="e.g., 1"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="responseTime">Response Time (ms)</label>
+            <input
+              type="number"
+              id="responseTime"
+              placeholder="e.g., 150"
+              required
+            />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="frequency">Transaction Frequency</label>
+            <input
+              type="number"
+              id="frequency"
+              placeholder="e.g., 2"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="locationChange">Location Change (0 or 1)</label>
+            <input
+              type="number"
+              id="locationChange"
+              placeholder="0 or 1"
+              min="0"
+              max="1"
+              required
+            />
+          </div>
+        </div>
+
+        <button type="submit">Check Transaction</button>
+      </form>
+
+      <div class="loading" id="loading">⏳ Checking transaction...</div>
+
+      <div class="error" id="error"></div>
+
+      <div class="result" id="result">
+        <h2 id="resultTitle"></h2>
+        <p id="resultText"></p>
+        <p id="confidenceText"></p>
+        <p id="scoreText"></p>
+      </div>
+    </div>
+
+    <script>
+      const form = document.getElementById("transactionForm");
+      const loading = document.getElementById("loading");
+      const error = document.getElementById("error");
+      const result = document.getElementById("result");
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        // Get form values
+        const transaction = {
+          amount: parseFloat(document.getElementById("amount").value),
+          hour: parseInt(document.getElementById("hour").value),
+          login_attempts: parseInt(
+            document.getElementById("loginAttempts").value,
+          ),
+          response_time: parseFloat(
+            document.getElementById("responseTime").value,
+          ),
+          transaction_frequency: parseInt(
+            document.getElementById("frequency").value,
+          ),
+          location_change: parseInt(
+            document.getElementById("locationChange").value,
+          ),
+        };
+
+        // Show loading
+        loading.style.display = "block";
+        error.classList.remove("show");
+        result.classList.remove("show");
+
+        try {
+          // Send to API
+          const response = await fetch("http://localhost:5000/predict", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(transaction),
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            // Show result
+            const isNormal = data.result === "NORMAL";
+            const resultDiv = document.getElementById("result");
+
+            resultDiv.className =
+              "result show " + (isNormal ? "result-normal" : "result-anomaly");
+
+            document.getElementById("resultTitle").textContent = isNormal
+              ? "✅ NORMAL TRANSACTION"
+              : "⚠️ ANOMALOUS TRANSACTION";
+
+            document.getElementById("resultText").textContent = isNormal
+              ? "This transaction looks legitimate!"
+              : "This transaction is suspicious!";
+
+            document.getElementById("confidenceText").textContent =
+              `Confidence: ${data.confidence.toFixed(2)}%`;
+
+            document.getElementById("scoreText").textContent =
+              `Anomaly Score: ${data.anomaly_score.toFixed(4)}`;
+
+            result.classList.add("show");
+          } else {
+            // Show error
+            error.textContent = data.error || "Error checking transaction";
+            error.classList.add("show");
+          }
+        } catch (err) {
+          error.textContent =
+            "Could not connect to API. Make sure the backend is running!";
+          error.classList.add("show");
+          console.error("Error:", err);
+        } finally {
+          loading.style.display = "none";
+        }
+      });
+    </script>
+  </body>
+</html>
