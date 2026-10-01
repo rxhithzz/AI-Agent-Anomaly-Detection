@@ -310,6 +310,25 @@
               `Anomaly Score: ${data.anomaly_score.toFixed(4)}`;
 
             result.classList.add("show");
+
+            // Save transaction data for dashboard
+            let transactionData = JSON.parse(
+              localStorage.getItem("transactionData"),
+            ) || {
+              normal: 0,
+              anomaly: 0,
+            };
+
+            if (data.result === "NORMAL") {
+              transactionData.normal++;
+            } else {
+              transactionData.anomaly++;
+            }
+
+            localStorage.setItem(
+              "transactionData",
+              JSON.stringify(transactionData),
+            );
           } else {
             // Show error
             error.textContent = data.error || "Error checking transaction";
