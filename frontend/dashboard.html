@@ -184,7 +184,18 @@
         font-weight: 600;
         cursor: pointer;
         margin-bottom: 20px;
-        transition: transform 0.2s;
+        transition:
+          transform 0.2s,
+          opacity 0.2s;
+      }
+
+      .refresh-btn:hover:not(:disabled) {
+        transform: translateY(-2px);
+      }
+
+      .refresh-btn:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
       }
 
       .refresh-btn:hover {
@@ -354,16 +365,24 @@
     </div>
 
     <script>
-      // Initialize data from localStorage
-      let transactionData = JSON.parse(
-        localStorage.getItem("transactionData"),
-      ) || {
+      // Initialize data
+      let transactionData = {
         normal: 0,
         anomaly: 0,
       };
 
       // Charts
       let pieChart, barChart;
+
+      // Fetch predictions from localStorage or API
+      function loadTransactionData() {
+        transactionData = JSON.parse(
+          localStorage.getItem("transactionData"),
+        ) || {
+          normal: 0,
+          anomaly: 0,
+        };
+      }
 
       function initCharts() {
         // Pie Chart
@@ -438,6 +457,8 @@
       }
 
       function updateStats() {
+        loadTransactionData();
+
         const total = transactionData.normal + transactionData.anomaly;
         const normalPercent =
           total > 0 ? ((transactionData.normal / total) * 100).toFixed(1) : 0;
@@ -453,25 +474,37 @@
         document.getElementById("anomalyPercent").textContent = anomalyPercent;
 
         // Update charts
-        pieChart.data.datasets[0].data = [
-          transactionData.normal,
-          transactionData.anomaly,
-        ];
-        pieChart.update();
+        if (pieChart && barChart) {
+          pieChart.data.datasets[0].data = [
+            transactionData.normal,
+            transactionData.anomaly,
+          ];
+          pieChart.update();
 
-        barChart.data.datasets[0].data = [
-          transactionData.normal,
-          transactionData.anomaly,
-        ];
-        barChart.update();
+          barChart.data.datasets[0].data = [
+            transactionData.normal,
+            transactionData.anomaly,
+          ];
+          barChart.update();
+        }
       }
 
       function refreshDashboard() {
         updateStats();
-        alert("Dashboard refreshed!");
+
+        // Visual feedback
+        const button = event.target;
+        const originalText = button.textContent;
+        button.textContent = "✅ Refreshed!";
+        button.disabled = true;
+
+        setTimeout(() => {
+          button.textContent = originalText;
+          button.disabled = false;
+        }, 1500);
       }
 
-      // Listen for updates from index.html
+      // Listen for storage changes from other tabs
       window.addEventListener("storage", (e) => {
         if (e.key === "transactionData") {
           transactionData = JSON.parse(e.newValue);
@@ -481,8 +514,15 @@
 
       // Initialize on page load
       window.addEventListener("load", () => {
+        loadTransactionData();
         initCharts();
         updateStats();
+
+        // Refresh every 5 seconds to stay in sync
+        setInterval(() => {
+          loadTransactionData();
+          updateStats();
+        }, 5000);
       });
     </script>
   </body>
